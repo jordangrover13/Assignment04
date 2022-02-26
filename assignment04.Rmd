@@ -31,34 +31,92 @@ https://www.pandemicoversight.gov/data-interactive-tools/interactive-dashboards/
 
 #Visualization 1
 
+Description of Viz 1: The goal of this visualization is to first help us understand who is actually receiving awards. With that understanding, we can layer on top, how many awards they receive, how much, and for what purposes. 
+
 ```{r cars}
 library(tidyverse)
 library(ggplot2)
+library(urbnthemes)
 data <- read.csv("CRF_details.csv")
 
 #List of Prime Recipients
 unique(data$Prime.recipient)
 
 #summarize by how many recipients in each recipient type
+#two geoms
+#one scale
+#one aes option (fill)
+#one non aes option(position nudge)
+
 data %>%
-  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe", if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN"), "City, Town, or Village", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State","Other")))))%>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   group_by(Type)%>%
   summarize(award_count = length(unique(Prime.recipient)))%>%
   ggplot()+
   geom_col(mapping = aes(x=Type, y = award_count, fill = Type))+
+  scale_fill_brewer(palette="palette_urbn")+
     labs(y = "Number of Recipients")+
-  labs(title = "The vast majority of award recipients are tribal nations")+
-  theme_minimal()
+  labs(title = "The vast majority of award recipients are tribal nations",subtitle = "Number of recipients by recipient type",caption = "Source: Pandemicoversight.gov")+
+  geom_text(mapping = aes(x = Type, y = award_count, label = award_count),position = position_nudge(y = +20))
 
 ```
 
 ## Visualization 2
 
-You can also embed plots, for example:
+Now knowing the breakdown of recipient types, how many grants are they receiving, and for how much? Each award is broken down into a sub recipient, an award, and then a spending category. I would like to just count how many unique awards there are per prime recipient, and what the sum of their awards are. To do that, I will make a new data set with Prime Recipient, Award Number, and Award Amount. The new Award Number and Award Amounts will include the most granular awards that were given, whether they were sub-awards or not.
+
+For smaller recipient types (counties, tribes, and municipalities), about how much have they been awarded?
+
 
 ```{r pressure, echo=FALSE}
+library("stringr")
 
-data %>%
+data%>%
+  mutate(recipient_amount = paste(Prime.recipient,Award.amount,Sep = " ", callapse = NULL))%>%
+  distinct(across(recipient_amount),.keep_all = TRUE)%>%
+  summarize(recipients = length(unique(Prime.recipient)))
+
+Distinct_Award_Data <- data%>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  mutate(Award_amount_detail = ifelse(is.na(Sub.award.amount),Award.amount,Sub.award.amount))%>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+   mutate(recipient_amount = paste(Prime.recipient,Award.amount,Sep = " ", callapse = NULL))%>%
+  distinct(across(recipient_amount),.keep_all = TRUE)%>%
+  select(Prime.recipient, recipient_amount, Award.amount, Type)%>%
+    distinct(across(recipient_amount),.keep_all = TRUE) 
+
+
+#one new geom
+#one new scale
+#one new non aes option (label number)
+#one new aes option (label)
+
+library(scales)
+Distinct_Award_Data%>%
+  filter(Type != "State", Type !="Other")%>%
+  ggplot()+
+  geom_boxplot(mapping = aes(x = Type, y = Award.amount, na.rm = FALSE))+
+  scale_y_continuous(labels = label_number( scale = 1e-9))+
+labs(y = "Award Amount In Billions", x = "Recipient Type")+
+  annotate(geom = "text", x = 1.1, y = 1490000000, 
+    label = "New York City", hjust = 0, vjust = 1, size = 4)+
+    annotate(geom = "text", x = 2.1, y = 1090000000, 
+    label = "LA County", hjust = 0, vjust = 1, size = 4)+
+  annotate(geom = "text", x = 3.1, y = 750000000, 
+    label = "Navajo Nation", hjust = 0, vjust = 1, size = 4)
+```
+
+
+Distinct_Award_Data <- data%>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  mutate(Award_amount_detail = ifelse(is.na(Sub.award.amount),Award.amount,Sub.award.amount))%>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe", if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State","Other")))))%>%
+  select(Prime.recipient, Award, Sub.recipient, Award.amount, Award_amount_detail, Money.spent.to.date, Spending.category,Type)%>%
+
+
+#data %>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
   mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
   group_by(State) %>%
@@ -108,6 +166,12 @@ data%>%
   ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
  theme(axis.text.x = element_text(angle = 45, hjust=1))+
  geom_line(mapping = aes(x = spending.category, y = award_count))
-```
+  
+  
+ggplot(data, aes(Pre.Post,fill = factor(apartment)))+
+  geom_histogram(binwidth = 1,stat="count", na.rm = TRUE)+
+  facet_wrap(~Program,ncol = 6)
+
+
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
