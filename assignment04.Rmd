@@ -15,7 +15,22 @@ https://www.pandemicoversight.gov/data-interactive-tools/interactive-dashboards/
 
 
 ```{r cars}
-summary(cars)
+data <- read.csv("CRF_details.csv")
+library(tidyverse)
+data %>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  group_by(State) %>%
+  summarize(mean(Award.amount))
+
+data %>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  group_by(State) %>%
+  summarize(mean_amount = mean(Award.amount))%>%
+  ggplot+ geom_col(mapping = aes(x=State, y=mean_amount))
+
+
 ```
 
 ## Including Plots
