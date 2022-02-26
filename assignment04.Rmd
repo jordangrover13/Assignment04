@@ -6,7 +6,7 @@ author: "author: Jordan Grover, jg2058"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-devtools::install_github("UrbanInstitute/urbnthemes")
+
 
 ```
 
@@ -63,13 +63,17 @@ data %>%
 
 ## Visualization 2
 
-Now knowing the breakdown of recipient types, how many grants are they receiving, and for how much? Each award is broken down into a sub recipient, an award, and then a spending category. I would like to just count how many unique awards there are per prime recipient, and what the sum of their awards are. To do that, I will make a new data set with Prime Recipient, Award Number, and Award Amount. The new Award Number and Award Amounts will include the most granular awards that were given, whether they were sub-awards or not.
+Now knowing the breakdown of recipient types, how many grants are they receiving, and for how much? Each award is broken down into a sub recipient, an award, and then a spending category. I would like to just count how many unique awards there are per prime recipient, and what the sum of their awards are. To do that, I will make a new data set with Prime Recipient, Distinct Award, and Award Amount. There is no distinct ID for prime award, so I have made one by combining Prime Recipient with Award Amount, and looking for the distinct combinations of the two (there is usually a 1-1 relationship between the two, but not always)
 
 For smaller recipient types (counties, tribes, and municipalities), about how much have they been awarded?
 
 
-```{r pressure, echo=FALSE}
+```{r 2}
+library(tidyverse)
+library(ggplot2)
+library(urbnthemes)
 library("stringr")
+
 
 data%>%
   mutate(recipient_amount = paste(Prime.recipient,Award.amount,Sep = " ", callapse = NULL))%>%
@@ -98,6 +102,7 @@ Distinct_Award_Data%>%
   ggplot()+
   geom_boxplot(mapping = aes(x = Type, y = Award.amount, na.rm = FALSE))+
   scale_y_continuous(labels = label_number( scale = 1e-9))+
+  labs(title = "Obvious Outliers in Pandemic Relief Award Recipients", subtitle = "Distribution of pandemic spending amongst localities", caption = "Source: Pandemicoversight.gov")+
 labs(y = "Award Amount In Billions", x = "Recipient Type")+
   annotate(geom = "text", x = 1.1, y = 1490000000, 
     label = "New York City", hjust = 0, vjust = 1, size = 4)+
@@ -108,70 +113,27 @@ labs(y = "Award Amount In Billions", x = "Recipient Type")+
 ```
 
 
-Distinct_Award_Data <- data%>%
-  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
-  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
-  mutate(Award_amount_detail = ifelse(is.na(Sub.award.amount),Award.amount,Sub.award.amount))%>%
-   mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe", if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State","Other")))))%>%
-  select(Prime.recipient, Award, Sub.recipient, Award.amount, Award_amount_detail, Money.spent.to.date, Spending.category,Type)%>%
+#Visualization Three
 
+Now for the larger grants, let's try to get a better sense at where that money is going, and how much has been spent. For our state recipients, lets narrow in on the sub-recipients. 
 
-#data %>%
-  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
-  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
-  group_by(State) %>%
-  summarize(mean(Award.amount))
-
-data2 <- data %>%
-mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))%>%
-  group_by(Type)%>%
-  summarize(award_count = length(unique(Prime.recipient)))
-
-data2$award_count
+```{r 3}
+library(tidyverse)
+library(ggplot2)
+library(urbnthemes)
 data %>%
-  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
-  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
-  group_by(Spending.category) %>%
-  summarize(mean_amount = mean(Award.amount))%>%
-  ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
- theme(axis.text.y = element_text(angle = 45, hjust=1))
+  mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+  select(Money.spent.to.date, Spending.category, Type)%>%
+  group_by(Spending.category)%>%
+    summarize(total = sum(Money.spent.to.date))%>%
+  mutate(Category = fct_reorder(Spending.category, total))%>%
+  ggplot()+
+  geom_col(mapping = aes(x = Category, y = total, fill = total))+
+    labs(y = "Total Amount Spent (Billions)")+
+  labs(title = "Payroll ranks second to highest for spending category, next to miscelaneous",subtitle = "Pandemic Relief Reported Spending",caption = "Source: Pandemicoversight.gov")+
+   scale_y_continuous(labels = label_number( scale = 1e-9))+
+  theme_minimal()+
+  scale_x_discrete(label=function(x) stringr::str_trunc(x, 20))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
 
-data %>%
-  mutate(Spending.category_new = ifelse(Spending.category=="","*Not Specified",Spending.category))%>%
-  group_by(Spending.category) %>%
-  summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
-  ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
- theme(axis.text.x = element_text(angle = 45, hjust=1))+
-  scale_x_discrete(drop=FALSE) + 
-  labs(y = "average award amount")
-
-#Add variables: 
-data2 <- data%>%
-  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
-  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
-  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))
-
-#Favorite
-
-  group_by(Spending.category) %>%
-    summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
-
-data%>%
-  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
-  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
-  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))%>%
-  group_by(Spending.category) %>%
-  summarize(award_count = length(unique(Prime.recipient)))%>%
-  summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
-  ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
- theme(axis.text.x = element_text(angle = 45, hjust=1))+
- geom_line(mapping = aes(x = spending.category, y = award_count))
-  
-  
-ggplot(data, aes(Pre.Post,fill = factor(apartment)))+
-  geom_histogram(binwidth = 1,stat="count", na.rm = TRUE)+
-  facet_wrap(~Program,ncol = 6)
-
-
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```
