@@ -29,34 +29,54 @@ Further, each graph must include:
 Pandemic Oversight Coronavirus Relief Fund details
 https://www.pandemicoversight.gov/data-interactive-tools/interactive-dashboards/data-exports
 
+#Visualization 1
 
 ```{r cars}
-data <- read.csv("CRF_details.csv")
 library(tidyverse)
 library(ggplot2)
+data <- read.csv("CRF_details.csv")
+
+#List of Prime Recipients
+unique(data$Prime.recipient)
+
+#summarize by how many recipients in each recipient type
+data %>%
+  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe", if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN"), "City, Town, or Village", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State","Other")))))%>%
+  group_by(Type)%>%
+  summarize(award_count = length(unique(Prime.recipient)))%>%
+  ggplot()+
+  geom_col(mapping = aes(x=Type, y = award_count, fill = Type))+
+    labs(y = "Number of Recipients")+
+  labs(title = "The vast majority of award recipients are tribal nations")+
+  theme_minimal()
+
+```
+
+## Visualization 2
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
 data %>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
   mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
   group_by(State) %>%
   summarize(mean(Award.amount))
 
-#summarize by how many in each award type
-data %>%
-mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"COUNTY",if_else(str_detect(Prime.recipient,"STATE"),"STATE","Other"))))%>%
+data2 <- data %>%
+mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))%>%
   group_by(Type)%>%
-  summarize(award_count = c(Prime.recipient))%>%
-  ggplot()+
-  geom_col(mapping = aes(x=Type, y = award_count))
+  summarize(award_count = length(unique(Prime.recipient)))
 
-
-
+data2$award_count
 data %>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
   mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
   group_by(Spending.category) %>%
   summarize(mean_amount = mean(Award.amount))%>%
   ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
- theme(axis.text.x = element_text(angle = 45, hjust=1))
+ theme(axis.text.y = element_text(angle = 45, hjust=1))
 
 data %>%
   mutate(Spending.category_new = ifelse(Spending.category=="","*Not Specified",Spending.category))%>%
@@ -67,26 +87,27 @@ data %>%
   scale_x_discrete(drop=FALSE) + 
   labs(y = "average award amount")
 
-#Favorite
-
-data %>%
+#Add variables: 
+data2 <- data%>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
   mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))
+
+#Favorite
+
   group_by(Spending.category) %>%
+    summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
+
+data%>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"STATE"),"State","Other"))))%>%
+  group_by(Spending.category) %>%
+  summarize(award_count = length(unique(Prime.recipient)))%>%
   summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
   ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
  theme(axis.text.x = element_text(angle = 45, hjust=1))+
-  scale_x_discrete(drop=FALSE) + # don't drop unused blank level+
-  labs(y = "average award amount")
-
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+ geom_line(mapping = aes(x = spending.category, y = award_count))
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
