@@ -6,7 +6,23 @@ author: "author: Jordan Grover, jg2058"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+devtools::install_github("UrbanInstitute/urbnthemes")
+
 ```
+
+## Instructions
+
+Your analysis should have four data visualizations of distinct graph types, made with ggplot2. Across all
+four graphs, use a total of:
+• Six different aesthetics (i.e. set inside aes());
+• Six different non-aesthetic options (i.e. set outside aes());
+• Five different geoms;
+• Two different scales (meaning change the default scale used for at least two aesthetics).
+Further, each graph must include:
+• Correct usage of all visual encodings;
+• Appropriate data sourcing (hint, check out the labs() function);
+• Proper labeling of all visual encodings;
+• An appropriate title and subtitle;
 
 ## Data Source
 
@@ -24,7 +40,15 @@ data %>%
   group_by(State) %>%
   summarize(mean(Award.amount))
 
-strh <- strheight('W')
+#summarize by how many in each award type
+data %>%
+mutate(Type = if_else(str_detect(Prime.recipient,"TRIBE"), "Tribe", if_else(str_detect(Prime.recipient,"COUNTY"),"COUNTY",if_else(str_detect(Prime.recipient,"STATE"),"STATE","Other"))))%>%
+  group_by(Type)%>%
+  summarize(award_count = c(Prime.recipient))%>%
+  ggplot()+
+  geom_col(mapping = aes(x=Type, y = award_count))
+
+
 
 data %>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
@@ -34,7 +58,26 @@ data %>%
   ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
  theme(axis.text.x = element_text(angle = 45, hjust=1))
 
+data %>%
+  mutate(Spending.category_new = ifelse(Spending.category=="","*Not Specified",Spending.category))%>%
+  group_by(Spending.category) %>%
+  summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
+  ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
+ theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  scale_x_discrete(drop=FALSE) + 
+  labs(y = "average award amount")
 
+#Favorite
+
+data %>%
+  mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
+  mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
+  group_by(Spending.category) %>%
+  summarize(mean_amount = mean(Award.amount,na.rm = TRUE))%>%
+  ggplot+ geom_col(mapping = aes(x=Spending.category, y=mean_amount))+
+ theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  scale_x_discrete(drop=FALSE) + # don't drop unused blank level+
+  labs(y = "average award amount")
 
 ```
 
