@@ -49,7 +49,7 @@ unique(data$Prime.recipient)
 #one non aes option(position nudge)
 
 data %>%
-   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   group_by(Type)%>%
   summarize(award_count = length(unique(Prime.recipient)))%>%
   ggplot()+
@@ -84,7 +84,7 @@ Distinct_Award_Data <- data%>%
   mutate(Award_number_new = ifelse(Award.number=="",0,Award.number))%>%
   mutate(Award = paste(Prime.recipient, Award_number_new, sep = " - ", collapse = NULL)) %>%
   mutate(Award_amount_detail = ifelse(is.na(Sub.award.amount),Award.amount,Sub.award.amount))%>%
-   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
    mutate(recipient_amount = paste(Prime.recipient,Award.amount,Sep = " ", callapse = NULL))%>%
   distinct(across(recipient_amount),.keep_all = TRUE)%>%
   select(Prime.recipient, recipient_amount, Award.amount, Type)%>%
@@ -115,14 +115,14 @@ labs(y = "Award Amount In Billions", x = "Recipient Type")+
 
 #Visualization Three
 
-Now for the larger grants, let's try to get a better sense at where that money is going, and how much has been spent. For our state recipients, lets narrow in on the sub-recipients. 
+Now, let's try to get a better sense at where that money is going, and how much has been spent. I want to narrow in on the sub-recipients.=-
 
 ```{r 3}
 library(tidyverse)
 library(ggplot2)
 library(urbnthemes)
 data %>%
-  mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+  mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   select(Money.spent.to.date, Spending.category, Type)%>%
   group_by(Spending.category)%>%
     summarize(total = sum(Money.spent.to.date))%>%
@@ -137,3 +137,26 @@ data %>%
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
 ```
+
+#Visualization Four
+
+Finally, let's narrow in on our "Other" recipient type. Can we learn a little bit about where that spending went, if it wasn't directly to states, counties, municipalities, or traibal governments?
+
+```{r}
+
+Other <- data %>%
+   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
+  filter(Type=="Other")%>%
+  mutate(SUB_Distinct = paste(Prime.recipient,Sub.recipient,Sep = "", callapse = NULL))%>%
+  distinct(across(SUB_Distinct),.keep_all = TRUE)%>%
+  select(SUB_Distinct, Sub.award.amount, State, Type, Award.type)%>%
+   mutate(Sub_type = if_else(str_detect(SUB_Distinct,"School|EDUCATION|ELEMENTARY|ACADEM"),"Educational",if_else(str_detect(SUB_Distinct,"BANK"),"Bank","Other")))
+
+Other
+
+Other%>%
+   ggplot()+
+     geom_bar(mapping= aes(x = Sub_type))
+
+```
+
