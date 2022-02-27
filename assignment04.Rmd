@@ -1,6 +1,6 @@
 ---
 title: "assignment04"
-output: pdf_document
+output: html_document
 author: "author: Jordan Grover, jg2058"
 ---
 
@@ -29,11 +29,12 @@ Further, each graph must include:
 Pandemic Oversight Coronavirus Relief Fund details
 https://www.pandemicoversight.gov/data-interactive-tools/interactive-dashboards/data-exports
 
-#Visualization 1
+
+##Visualization 1
 
 Description of Viz 1: The goal of this visualization is to first help us understand who is actually receiving awards. The award recipients aren't clearly specified, so we will have to give them an extra category for each of the typical federal grant recipients: counties, cities, states, and Native American tribes. With that understanding, we can layer on top, how many awards they receive, how much, and for what purposes. 
 
-```{r cars}
+```{r}
 library(tidyverse)
 library(ggplot2)
 library(urbnthemes)
@@ -42,11 +43,6 @@ data <- read.csv("CRF_details.csv")
 #List of Prime Recipients
 #unique(data$Prime.recipient)
 
-#summarize by how many recipients in each recipient type
-#two geoms
-#one scale
-#one aes option (fill)
-#one non aes option(position nudge)
 
 data %>%
    mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
@@ -130,7 +126,8 @@ grid.arrange(PlotB, PlotC, ncol=2, top="State and Other Grantees", bottom = "Sou
 ```
 
 
-#Visualization Three
+
+##Visualization Three
 
 Now, let's try to get a better sense at where that money is going, and how much has been spent. I want to narrow in on the sub-recipients, but just for the State, County, City, and Tribal Governments. Let's look at the amount of funding they have actually spent, based on what each government is reporting. Are they doing a good job of reporting their expenditures, and what is it going to? 
 
@@ -154,7 +151,8 @@ data %>%
 
 ```
 
-#Visualization Four
+
+##Visualization Four
 
 Finally, let's narrow in on our "Other" recipient type. Can we learn a little bit about where that spending went, if it wasn't directly to states, counties, municipalities, or traibal governments? Most of this funding was labeled as grant funding, so we will focus on just the grant funding that wasn't allocated directly to local governments.
 
@@ -201,6 +199,6 @@ grid.arrange(Plot1, Plot2, ncol=2, top="Breakdown of Grants Awarded for Covid Re
 
 
 ```
-#Conclusion
+##Conclusion
 
 This visualization exercise taught me more about the shortcomings of the dataset than about government expenditures for covid relief. Although this data has been made public, there is little consistency in the grantees expectation to report expenditure, nor are the awards labeled with clear descriptors in order to ensure effective oversight. Some helpful categories and labels on the data would have been dates of funding, dates of expenditure, Clear Grant categories, and categories for sub-recipients, such as nonprofits, business, healthcare institutions, etc. 
