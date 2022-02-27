@@ -40,7 +40,7 @@ library(urbnthemes)
 data <- read.csv("CRF_details.csv")
 
 #List of Prime Recipients
-unique(data$Prime.recipient)
+#unique(data$Prime.recipient)
 
 #summarize by how many recipients in each recipient type
 #two geoms
@@ -69,11 +69,9 @@ For smaller recipient types (counties, tribes, and municipalities), about how mu
 
 
 ```{r 2}
-library(tidyverse)
-library(ggplot2)
-library(urbnthemes)
 library("stringr")
-
+library(scales)
+library(gridExtra)
 
 data%>%
   mutate(recipient_amount = paste(Prime.recipient,Award.amount,Sep = " ", callapse = NULL))%>%
@@ -91,25 +89,44 @@ Distinct_Award_Data <- data%>%
     distinct(across(recipient_amount),.keep_all = TRUE) 
 
 
-#one new geom
-#one new scale
-#one new non aes option (label number)
-#one new aes option (label)
 
-library(scales)
-Distinct_Award_Data%>%
+PlotA <- Distinct_Award_Data%>%
   filter(Type != "State", Type !="Other")%>%
   ggplot()+
   geom_boxplot(mapping = aes(x = Type, y = Award.amount, na.rm = FALSE))+
   scale_y_continuous(labels = label_number( scale = 1e-9))+
+  labs(y = "Award Amount In Billions", x="Award Type")+
   labs(title = "Obvious Outliers in Pandemic Relief Award Recipients", subtitle = "Distribution of pandemic spending amongst localities", caption = "Source: Pandemicoversight.gov")+
-labs(y = "Award Amount In Billions", x = "Recipient Type")+
   annotate(geom = "text", x = 1.1, y = 1490000000, 
     label = "New York City", hjust = 0, vjust = 1, size = 4)+
     annotate(geom = "text", x = 2.1, y = 1090000000, 
     label = "LA County", hjust = 0, vjust = 1, size = 4)+
   annotate(geom = "text", x = 3.1, y = 750000000, 
     label = "Navajo Nation", hjust = 0, vjust = 1, size = 4)
+
+PlotA
+
+PlotB <- Distinct_Award_Data%>%
+  filter(Type == "State")%>%
+  ggplot()+
+  geom_boxplot(mapping = aes(x = Type, y = Award.amount, na.rm = FALSE))+
+  scale_y_continuous(labels = label_number( scale = 1e-9))+
+  labs(y="Total Award Amount (Billions)",x=NULL)+
+  annotate(geom = "text", x = 1.05, y = 9525564744, 
+    label = "California", hjust = 0, vjust = 1, size = 4)+
+   annotate(geom = "text", x = 1.05, y = 8000000000, 
+    label = "Texas", hjust = 0, vjust = 1, size = 4)
+
+PlotC <- Distinct_Award_Data%>%
+  filter(Type == "Other")%>%
+  ggplot()+
+  geom_boxplot(mapping = aes(x = Type, y = Award.amount, na.rm = FALSE))+
+  scale_y_continuous(labels = label_number( scale = 1e-9))+
+  labs(y=NULL,x=NULL)+
+   annotate(geom = "text", x = 1.05, y = 6000000000, 
+    label = "Florida Dept of Financial Services", hjust = 0, vjust = 1, size = 4)
+
+grid.arrange(PlotB, PlotC, ncol=2, top="State and Other Grantees", bottom = "Source: Pandemicoversight.gov")
 ```
 
 
@@ -118,9 +135,7 @@ labs(y = "Award Amount In Billions", x = "Recipient Type")+
 Now, let's try to get a better sense at where that money is going, and how much has been spent. I want to narrow in on the sub-recipients, but just for the State, County, City, and Tribal Governments. 
 
 ```{r 3}
-library(tidyverse)
-library(ggplot2)
-library(urbnthemes)
+
 data %>%
   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   select(Money.spent.to.date, Spending.category, Type)%>%
@@ -144,6 +159,8 @@ data %>%
 Finally, let's narrow in on our "Other" recipient type. Can we learn a little bit about where that spending went, if it wasn't directly to states, counties, municipalities, or traibal governments?
 
 ```{r}
+library(gridExtra)
+
 
 Other <- data %>%
    mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
@@ -178,7 +195,7 @@ Plot2 <- Other%>%
    labs(y = "Total Recipients")+
   labs(x = "Award Category")
 
-library(gridExtra)
+
 grid.arrange(Plot1, Plot2, ncol=2, top="Breakdown of Grants Awarded for Covid Relief Funding", bottom = "Source: Pandemicoversight.gov")
 
 
