@@ -115,7 +115,7 @@ labs(y = "Award Amount In Billions", x = "Recipient Type")+
 
 #Visualization Three
 
-Now, let's try to get a better sense at where that money is going, and how much has been spent. I want to narrow in on the sub-recipients.=-
+Now, let's try to get a better sense at where that money is going, and how much has been spent. I want to narrow in on the sub-recipients, but just for the State, County, City, and Tribal Governments. 
 
 ```{r 3}
 library(tidyverse)
@@ -124,16 +124,17 @@ library(urbnthemes)
 data %>%
   mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   select(Money.spent.to.date, Spending.category, Type)%>%
+  filter(Type !="Other")%>%
   group_by(Spending.category)%>%
     summarize(total = sum(Money.spent.to.date))%>%
   mutate(Category = fct_reorder(Spending.category, total))%>%
   ggplot()+
   geom_col(mapping = aes(x = Category, y = total, fill = total))+
     labs(y = "Total Amount Spent (Billions)")+
-  labs(title = "Payroll ranks second to highest for spending category, next to miscelaneous",subtitle = "Pandemic Relief Reported Spending",caption = "Source: Pandemicoversight.gov")+
+  labs(title = "Over $8 billion of unspecified spending from government relief funds",subtitle = "Pandemic Relief Reported Spending",caption = "Source: Pandemicoversight.gov")+
    scale_y_continuous(labels = label_number( scale = 1e-9))+
   theme_minimal()+
-  scale_x_discrete(label=function(x) stringr::str_trunc(x, 20))+
+  scale_x_discrete(label=function(x) stringr::str_trunc(x, 25))+
   theme(axis.text.x = element_text(angle = 45, hjust=1))
 
 ```
@@ -147,16 +148,40 @@ Finally, let's narrow in on our "Other" recipient type. Can we learn a little bi
 Other <- data %>%
    mutate(Type = if_else(str_detect(Prime.recipient,"STATE|COMMONWEALTH|GOVERNOR"),"State", if_else(str_detect(Prime.recipient,"COUNTY"),"County",if_else(str_detect(Prime.recipient,"TRIBE|NATION|TRIBAL|NATIVE|INDIAN|COUNCIL|COMMUNITY|RANCHERIA"), "Tribe",if_else(str_detect(Prime.recipient,"CITY|MUNICIPALITY|VILLAGE|TOWN|PUBELO"), "City, Town, or Village","Other")))))%>%
   filter(Type=="Other")%>%
+  filter(Award.type=="GRANT")%>%
   mutate(SUB_Distinct = paste(Prime.recipient,Sub.recipient,Sep = "", callapse = NULL))%>%
   distinct(across(SUB_Distinct),.keep_all = TRUE)%>%
-  select(SUB_Distinct, Sub.award.amount, State, Type, Award.type)%>%
-   mutate(Sub_type = if_else(str_detect(SUB_Distinct,"School|EDUCATION|ELEMENTARY|ACADEM"),"Educational",if_else(str_detect(SUB_Distinct,"BANK"),"Bank","Other")))
+  mutate(Sub_type = if_else(str_detect(SUB_Distinct,"SCHOOL|EDUCATION|ELEMENTARY|ACADEM|CHILD"),"Educational",if_else(str_detect(SUB_Distinct,"HOSPITAL"),"Health Care",if_else(str_detect(SUB_Distinct,"BANK"),"Banks",if_else(str_detect(SUB_Distinct,"MEDIC|HEALTH"),"Health Care",if_else(str_detect(SUB_Distinct,"CHURCH|MINISTRIES|MINISTRY"),"Nonprofit",if_else(str_detect(Award.description,"produce|meat|Meat|Farm|Fish|fish|Produce|Dairy|dairy|Agricultur|agricul|FOOD|food|Food|Nurtition|nutrition|diet"),"Food",if_else(str_detect(Award.description,"School|school|CDL|education|instruction|Education|CHILD|Teacher|learning|Learning|teacher|academic|Academic|child|Child|COLLEGE|College|college|University|UNIVERSITY|university|EDUCATION|LEA"),"Educational",if_else(str_detect(Award.description,"Housing|housing|house|home|HOME|rent|Rent|mortgage|Mortgage|utilit|Utilit"),"Housing",if_else(str_detect(Award.description,"Health Care|Behavioral Health|behavioral health|Mental Health|counseling|MENTAL HEALTH|Local Public Health|mental health|HEALTHCARE|Vaccin|vaccin|VACCIN|testing|Testing|Health Care|HEALTH|Health care|medical|Medical|Hospital|HOSPITAL|hospital|Contact tracing|contact tracing|test|personal protective|PPE|ppe"),"Health Care",if_else(str_detect(Award.description,"Business|business|Tourism|tourism|BUSINESS|TOURISM|Hotel|hotel|To provide short"),"Business",if_else(str_detect(Award.description,"Wireless|wireless|phone|Wifi|wifi|WIFI|WiFi|Technical assistance|technical assistance|Technical Assistance|broadband|Broadband|hotspot|Hotspot|digital|Digital|remote|Technology|technology|Fiber|fiber"),"Technology",if_else(str_detect(Award.description,"fuel|Fuel|FUEL|Ethanol|ethanol"),"Fuel",if_else(str_detect(Award.description,"CHURCH|MINISTRIES|MINISTRY|Religio|religio"),"Nonprofit",if_else(str_detect(Award.description,"Nonprofit|nonprofit|Non-profit|non-profit|Community based|(COA)|Community investments|Make investments in communities to improve|Community Assistance|Community assistance|community assistance|victim|Victim|REFUGEE"),"Nonprofit",if_else(str_detect(Award.description,"music|art|culture|entertainment|Music|Art|Culture|Entertainment"),"Arts",if_else(str_detect(Award.description,"reimbursement|Reimbursement|Municipalities|municipalities|local economic support|Distribution to local|MITIGATION|MUNICIPALITIES|COUNTIES|Counties|counties|CRF"),"Local governments",if_else(str_detect(Award.description,"employment|Employment"),"Employment",if_else(str_detect(Award.description,"Payroll|payroll|Hazard Pay|Hazard pay|hazard pay"),"Payroll","Other")))))))))))))))))))%>%
+  select(SUB_Distinct, Sub.award.amount, Sub_type, State, Type, Award.type, Award.description)
 
-Other
+OtherOther<- Other%>%
+  filter(Sub_type=="Other")
 
-Other%>%
-   ggplot()+
-     geom_bar(mapping= aes(x = Sub_type))
+Plot1<-Other %>%
+  group_by(Sub_type)%>%
+  summarize(total = sum(Sub.award.amount))%>%
+  ggplot()+
+   geom_col(mapping= aes(x = Sub_type, y=total))+
+   scale_y_continuous(labels = label_number( scale = 1e-9))+
+   theme(axis.text.x = element_text(angle = 45, hjust=1))+
+  labs(y = "Total Awarded (Billions)")+
+  labs(x = "Award Category")
+
+
+
+Plot2 <- Other%>%
+  group_by(Sub_type)%>%
+  summarize(count = length(SUB_Distinct))%>%
+  ggplot()+
+  geom_point(mapping = aes(x=Sub_type, y = count))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))+
+   labs(y = "Total Recipients")+
+  labs(x = "Award Category")
+
+library(gridExtra)
+grid.arrange(Plot1, Plot2, ncol=2, top="Breakdown of Grants Awarded for Covid Relief Funding", bottom = "Source: Pandemicoversight.gov")
+
+
 
 ```
 
